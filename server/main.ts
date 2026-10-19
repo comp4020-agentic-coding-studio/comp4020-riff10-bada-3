@@ -57,8 +57,11 @@ function mayCreateRoom(ip: string): boolean {
   return true;
 }
 
+// The README's links to repo files (docs/, CLAUDE.md) resolve on GitHub, where those files render
+const REPO = "https://github.com/comp4020-agentic-coding-studio/comp4020-riff10-bada-3/blob/main/";
+
 async function readme(): Promise<string> {
-  const body = await marked.parse(await readFile(join(ROOT, "README.md"), "utf8"));
+  const body = (await marked.parse(await readFile(join(ROOT, "README.md"), "utf8"))).replace(/href="(?![a-z]+:|\/|#)([^"]+)"/g, `href="${REPO}$1"`);
   return `<!doctype html>
 <html lang="en-AU">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -69,7 +72,7 @@ ${body}
 </main></body></html>`;
 }
 
-async function serveStatic(pathname: string, res: ServerResponse): Promise<boolean> {
+async function serveStatic(pathname: string, res: ServerResponse, status = 200): Promise<boolean> {
   let rel = decodeURIComponent(pathname);
   if (rel.endsWith("/")) rel += "index.html";
   const file = normalize(join(OUT, rel));
@@ -79,7 +82,7 @@ async function serveStatic(pathname: string, res: ServerResponse): Promise<boole
     try {
       if (!(await stat(f)).isFile()) continue;
       const immutable = rel.startsWith("/_next/static/");
-      res.writeHead(200, {
+      res.writeHead(status, {
         "content-type": TYPES[extname(f)] ?? "application/octet-stream",
         "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
       });
@@ -142,7 +145,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "GET" || req.method === "HEAD") {
       if (await serveStatic(url.pathname, res)) return;
-      if (await serveStatic("/404.html", res)) return;
+      if (await serveStatic("/404.html", res, 404)) return;
     }
     json(res, 404, { error: "not found" });
   } catch (err) {
