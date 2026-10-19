@@ -75,3 +75,22 @@ Each of these is a decision, and each is checked (test names in brackets).
 - **A tab closed mid-build.** The site keeps rising (construction is the economy's, not the player's), stays the builder's, and the builder gets their identity back on return. ("a building site keeps rising after its builder closes the tab".) If everyone leaves, the whole room pauses ([ADR 0001](adr/0001-empty-rooms-pause.md)).
 - **The server restarted under both players.** Both browsers show "reconnecting" and rejoin by themselves under a new incarnation. An action in flight during the restart is refused, not replayed, and the player is told it may not have gone through. At most 5 s of play rolls back after a crash, none after a graceful stop. ("recovers a campaign after a graceful restart", "after an abrupt kill, loses at most the last save interval".)
 - **Coming back the next day.** The front page lists the worlds this browser holds an identity for, from localStorage alone: no account and nothing new on the server. Clearing site data or switching browser loses the list and the identity, by design: there's nothing to recover it with. ("a returning browser finds every world it joined".)
+
+## Every feature against the argument
+
+Audited for the final project against the README's claims; nothing was cut.
+
+| Feature | The claim it serves |
+| --- | --- |
+| factory chain, claims, datacentre, harvesters, networks | every convenience has a dependency |
+| careful and intensive harvesting, efficiency kits, Sun Gardens | being careful gets more from the same world, not a new one |
+| the Green Lobby and its finite seed bank | the world is finite: even replanting runs out |
+| five worlds, remnants, World Engines | no world comes back fresh |
+| shared stockpile, helping raise sites, the host role | co-presence: more hands, one island |
+| the restraint vote | the ending that leaves the rest alone needs everyone present |
+| emotes and named places, no chat | talk without a moderation surface; named places feed the ending's archive |
+| browning land, stumps, thinning birdsong | the cost shows in the land, not a lecture |
+| survey arrow | the last deposits never become a hunt, so a world ends when it's spent |
+| photo (`P`) | the weakest link: a picture of the land before it goes. Kept because it costs nothing on the server and the land is the argument |
+| short campaign | it fits an afternoon |
+| the front page's world list | you can come back tomorrow |

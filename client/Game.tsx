@@ -613,7 +613,7 @@ function StagePanel({ s }: { s: Snapshot }): ReactNode {
 }
 
 function RoomPanel({ s, client, host }: { s: Snapshot; client: GameClient; host: boolean }): ReactNode {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState("");
   const status = { live: "connected", connecting: "connecting…", reconnecting: "reconnecting…", error: "disconnected" }[client.status];
   return (
       <div className="panel top-right">
@@ -622,14 +622,20 @@ function RoomPanel({ s, client, host }: { s: Snapshot; client: GameClient; host:
           <button
             type="button"
             onClick={() => {
-              void navigator.clipboard?.writeText(`${location.origin}/play/?room=${s.code}`);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
+              const link = `${location.origin}/play/?room=${s.code}`;
+              // say "copied" only once it is; without clipboard access, show the link to copy by hand
+              (navigator.clipboard?.writeText(link) ?? Promise.reject()).then(
+                () => setCopied("yes"),
+                () => setCopied(link),
+              );
+              setTimeout(() => setCopied(""), 4000);
             }}
           >
-            {copied ? "Link copied" : "Copy invite link"}
+            {copied === "yes" ? "Link copied" : "Copy invite link"}
           </button>
         </p>
+        {copied && copied !== "yes" && <p className="small invite-link">{copied}</p>}
+        {Object.values(s.players).filter((p) => p.connected).length === 1 && s.phase.k !== "ended" && <p className="small">On your own: send the invite link to play together.</p>}
         <p className="small" role="status">
           <span className={`dot ${client.status}`} aria-hidden="true" /> {status}
           {s.pace === "rapid" ? " · short campaign" : ""}

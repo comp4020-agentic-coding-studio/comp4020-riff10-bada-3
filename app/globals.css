@@ -69,6 +69,7 @@ kbd { background: var(--paper-2); border: 1px solid var(--line); border-radius: 
 .stocks .num { text-align: right; font-variant-numeric: tabular-nums; }
 .swatch { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; border: 1px solid var(--line); margin-right: 0.35rem; vertical-align: -1px; }
 .roster li.away { opacity: 0.6; }
+.invite-link { overflow-wrap: anywhere; user-select: all; }
 .code { font-family: ui-monospace, monospace; font-size: 1.05rem; letter-spacing: 0.08em; }
 .dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #999; }
 .dot.live { background: #3a9b5c; }
