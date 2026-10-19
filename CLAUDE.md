@@ -64,3 +64,4 @@ Plenty is a multiplayer game: one Node process (`server/`) owns every room's sim
 - `node scripts/playbot.ts <ROOM> [url] [name] [rush|green|hand]` fills a room with a bot that plays the chain; its decisions are `scripts/brain.ts`, which the spec also runs. Use bots plus a browser to see later worlds and dense scenes.
 - When you change behaviour, update the doc that describes it in the same commit. A contention behaviour (who wins, what a slow client sees) is a decision: record it in `docs/DECISIONS.md` with the test that holds it.
 - `README.md` is 400--600 words and `PROCESS.md` 900--1100, both checked by `spec/docs.test.ts`. When you add a test the README cites, use its exact name.
+- A test the README cites must assert the claim itself, not an easier case. `spec/docs.test.ts` only proves the name exists, so read the test body before citing it.
