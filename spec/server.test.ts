@@ -189,7 +189,7 @@ describe("real time", () => {
     a.close();
   });
 
-  it("two clients racing for the same deposit at the same instant: each unit goes to exactly one of them", async () => {
+  it("two clients harvesting one deep deposit at once: both are served and nothing is counted twice", async () => {
     const room = await newRoom(baseUrl);
     const a = await joined(baseUrl, room, "Ada");
     const b = await joined(baseUrl, room, "Bo");
@@ -202,7 +202,7 @@ describe("real time", () => {
     const acks = await Promise.all([a.until((m) => m.t === "ack" && m.id === ia), b.until((m) => m.t === "ack" && m.id === ib)]);
     await new Promise((r) => setTimeout(r, 400));
     const took = acks.filter((m) => m.t === "ack" && m.ok).length;
-    // a deep deposit has a unit for each; the last-unit case is spec/sim.test.ts's
+    // a deep deposit has a unit for each; the last-unit race is the next test
     expect(took).toBe(2);
     // both sessions agree on the tile and the books, and nothing was taken twice or lost
     expect(a.snap!.tiles[idx].amt).toBe(b.snap!.tiles[idx].amt);
@@ -327,6 +327,69 @@ describe("persistence", () => {
     back.close();
     await stop(p, "SIGTERM");
   }, 45_000);
+});
+
+describe("contention over real sockets", () => {
+  it("two clients racing for the last unit of a world: exactly one gets it, the other is told, and the world ends once", async () => {
+    // a room one unit from spent, written straight to a private server's database
+    const dir = mkdtempSync(join(tmpdir(), "plenty-last-"));
+    const port = 20000 + Math.floor(Math.random() * 1000);
+    const url = `http://localhost:${port}`;
+    const prev = process.env.DATA_DIR;
+    process.env.DATA_DIR = dir;
+    const { saveRoom, db } = await import("../server/store.ts");
+    process.env.DATA_DIR = prev;
+    const { createRoom, join: seat, leave, newChanges } = await import("../shared/sim.ts");
+    const s = createRoom("LASTU", 7, "rapid");
+    const ch = newChanges();
+    const last = s.tiles.findIndex((t) => t.d && t.amt > 0);
+    for (const [i, t] of s.tiles.entries()) {
+      if (!t.d || t.amt === 0) continue;
+      const take = i === last ? t.amt - 1 : t.amt;
+      s.ledger[t.d].remaining -= take;
+      s.ledger[t.d].extracted += take;
+      t.amt -= take;
+    }
+    s.lobby.bank = { matter: 0, mineral: 0, coolant: 0 };
+    s.lobby.bankStart = { matter: 0, mineral: 0, coolant: 0 };
+    const [x, y] = [last % s.w, Math.floor(last / s.w)];
+    for (const [pid, tok] of [["pa", "tok-race-a"], ["pb", "tok-race-b"]]) {
+      seat(s, pid, tok, pid, ch);
+      Object.assign(s.players[pid], { x, y });
+      leave(s, pid, ch);
+    }
+    saveRoom(s);
+    db.close();
+    const p = spawn(process.execPath, ["server/main.ts"], { env: { ...process.env, PORT: String(port), DATA_DIR: dir }, stdio: "ignore" });
+    try {
+      for (let i = 0; i < 100; i++) {
+        try {
+          await fetch(new URL("/api/health", url));
+          break;
+        } catch {
+          await new Promise((r) => setTimeout(r, 100));
+        }
+      }
+      const a = await joined(url, "LASTU", "A", "tok-race-a");
+      const b = await joined(url, "LASTU", "B", "tok-race-b");
+      const ia = a.cmd({ k: "harvest", x, y }, "last-a");
+      const ib = b.cmd({ k: "harvest", x, y }, "last-b");
+      const acks = (await Promise.all([a.until((m) => m.t === "ack" && m.id === ia), b.until((m) => m.t === "ack" && m.id === ib)])) as Extract<ServerMsg, { t: "ack" }>[];
+      expect(acks.filter((m) => m.ok)).toHaveLength(1);
+      // the winner's harvest spent the world, so the loser hears that it's changing
+      expect(acks.find((m) => !m.ok)?.reason).toBe("the world is changing: wait a moment");
+      // both sessions hear the world end, once
+      for (const bot of [a, b]) {
+        await bot.until((m) => m.t === "welcome" && m.snap.phase.k === "transition");
+        expect(bot.snap!.history).toHaveLength(1);
+      }
+      a.close();
+      b.close();
+    } finally {
+      p.kill("SIGKILL");
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 30_000);
 });
 
 describe("the action log", () => {

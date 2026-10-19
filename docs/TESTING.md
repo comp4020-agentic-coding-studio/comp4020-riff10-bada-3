@@ -63,7 +63,8 @@ The factory chain, claims, networks and the Green Lobby (crit 10):
 
 **`spec/server.test.ts`**, added for the final project:
 
-- two clients racing for one deposit over real sockets: each unit goes to exactly one, and both sessions agree on the tile and the books
+- two clients racing for the last unit of a world over real sockets (a room one unit from spent, written to a private server's database): exactly one is acknowledged, the other is told the world is changing, and both hear the transition once
+- two clients harvesting one deep deposit at once: both are served, both sessions agree on the tile, and nothing is counted twice
 - a stalled connection (its socket paused, as a throttled phone would be) never delays the other player's acknowledgement, and catches up to the same world when it resumes
 
 **`spec/visit.test.ts`**, the marker's visit: the front page links `/readme/` and states both campaign lengths; `/readme/` links to the game; a returning browser's storage lists every world it holds a token for, newest first, finished ones included, even when the list itself is corrupt.
@@ -72,7 +73,7 @@ The factory chain, claims, networks and the Green Lobby (crit 10):
 
 **`spec/invariants.test.ts`**, the course's: `/` answers and `/readme/` publishes the README with every heading.
 
-67 tests, all passing locally against a freshly built server.
+68 tests, all passing locally against a freshly built server.
 
 ## Multiplayer playthroughs
 

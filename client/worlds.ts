@@ -52,5 +52,6 @@ export function listWorlds(store: StorageLike): WorldEntry[] {
     const m = store.key(i)?.match(TOKEN);
     if (m) out.set(m[1], all[m[1]] ?? { code: m[1], world: "", stage: 0, last: 0, ended: false, short: false });
   }
-  return [...out.values()].sort((a, b) => b.last - a.last || a.code.localeCompare(b.code));
+  const last = (e: WorldEntry): number => (Number.isFinite(e.last) ? e.last : 0);
+  return [...out.values()].sort((a, b) => last(b) - last(a) || a.code.localeCompare(b.code));
 }

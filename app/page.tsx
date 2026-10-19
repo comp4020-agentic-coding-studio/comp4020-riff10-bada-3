@@ -2,7 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { listWorlds, type WorldEntry } from "../client/worlds.ts";
 
-// Measured with two bots (scripts/brain.ts, seeds 7 and 11): see docs/DESIGN.md#pacing.
+// Measured with two bots (scripts/brain.ts): see docs/DESIGN.md#whole-campaigns-two-bots. spec/sim.test.ts bounds SHORT.
 const SHORT = "about 10–20 minutes for two";
 const FULL = "about 30–75 minutes for two";
 
