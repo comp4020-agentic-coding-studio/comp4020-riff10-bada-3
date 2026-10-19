@@ -101,8 +101,10 @@ async function walkToDeposit(b: Bot): Promise<[number, number]> {
   const s = b.snap!;
   const me = s.players[b.you];
   const i = s.tiles.findIndex((t, k) => t.d && t.amt > 0 && Math.hypot((k % s.w) - me.x, Math.floor(k / s.w) - me.y) < 12);
-  const x = i % s.w;
-  const y = Math.floor(i / s.w);
+  return walkTo(b, i % s.w, Math.floor(i / s.w));
+}
+
+async function walkTo(b: Bot, x: number, y: number): Promise<[number, number]> {
   for (let step = 0; step < 60; step++) {
     const p = b.snap!.players[b.you];
     const dx = x - p.x;
@@ -186,6 +188,51 @@ describe("real time", () => {
     await a.until(() => a.msgs.filter((m) => m.t === "welcome").length > welcomes);
     a.close();
   });
+
+  it("two clients racing for the same deposit at the same instant: each unit goes to exactly one of them", async () => {
+    const room = await newRoom(baseUrl);
+    const a = await joined(baseUrl, room, "Ada");
+    const b = await joined(baseUrl, room, "Bo");
+    const [x, y] = await walkToDeposit(a);
+    await walkTo(b, x, y);
+    const idx = y * a.snap!.w + x;
+    const before = a.snap!.tiles[idx].amt;
+    const ia = a.cmd({ k: "harvest", x, y }, "race-a");
+    const ib = b.cmd({ k: "harvest", x, y }, "race-b");
+    const acks = await Promise.all([a.until((m) => m.t === "ack" && m.id === ia), b.until((m) => m.t === "ack" && m.id === ib)]);
+    await new Promise((r) => setTimeout(r, 400));
+    const took = acks.filter((m) => m.t === "ack" && m.ok).length;
+    // a deep deposit has a unit for each; the last-unit case is spec/sim.test.ts's
+    expect(took).toBe(2);
+    // both sessions agree on the tile and the books, and nothing was taken twice or lost
+    expect(a.snap!.tiles[idx].amt).toBe(b.snap!.tiles[idx].amt);
+    expect(extracted(a.snap!)).toBe(took);
+    expect(extracted(b.snap!)).toBe(took);
+    expect(before - a.snap!.tiles[idx].amt).toBeLessThanOrEqual(took);
+    a.close();
+    b.close();
+  }, 20_000);
+
+  it("a stalled connection never holds up the other player, and catches up when it recovers", async () => {
+    const room = await newRoom(baseUrl);
+    const slow = await joined(baseUrl, room, "Slow");
+    const fast = await joined(baseUrl, room, "Fast");
+    // the slow socket stops reading, as a throttled phone would
+    (slow.ws as unknown as { _socket: { pause(): void; resume(): void } })._socket.pause();
+    const [x, y] = await walkToDeposit(fast);
+    const sent = Date.now();
+    const id = fast.cmd({ k: "harvest", x, y }, "while-slow");
+    const ack = await fast.until((m) => m.t === "ack" && m.id === id, 1000);
+    expect(ack).toMatchObject({ ok: true });
+    expect(Date.now() - sent).toBeLessThan(1000);
+    (slow.ws as unknown as { _socket: { pause(): void; resume(): void } })._socket.resume();
+    await slow.until(() => extracted(slow.snap!) === 1, 3000);
+    // the same world in both, once the slow one has read what queued up (a lobbyist may replant meanwhile, in both)
+    const i = y * fast.snap!.w + x;
+    await slow.until(() => slow.snap!.tiles[i].amt === fast.snap!.tiles[i].amt, 3000);
+    slow.close();
+    fast.close();
+  }, 20_000);
 
   it("survives messages built to throw when coerced", async () => {
     const room = await newRoom(baseUrl);

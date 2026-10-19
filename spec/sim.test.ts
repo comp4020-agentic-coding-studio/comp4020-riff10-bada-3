@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILDINGS, CLAIM_SIZE, FAMILIES, LOBBY, PACES, PIPE_LEAK_EVERY, STAGES, type BuildingType, type Pace } from "../shared/content.ts";
+import { BUILDINGS, CLAIM_SIZE, FAMILIES, LOBBY, PACES, PIPE_LEAK_EVERY, STAGES, TICK_MS, type BuildingType, type Pace } from "../shared/content.ts";
 import type { Building, Command, LedgerEntry, RoomState, StageSummary } from "../shared/protocol.ts";
 import { DIRS, claimAt, dirTo, footprint, routeBetween, touching } from "../shared/layout.ts";
 import { applyCommand, bundleOk, claimProblem, createRoom, goodsOk, join, leave, ledgerHolds, newChanges, placementProblem, tick, totalRemaining, type Changes } from "../shared/sim.ts";
@@ -626,11 +626,41 @@ describe("claims", () => {
     expect(s.claims).toHaveLength(0);
   });
 
+  it("two players claiming overlapping ground at the same moment: the first command wins, the second is told whose it is", () => {
+    const { s, ch } = stocked(["a", "b"]);
+    const [x, y] = claimFor(s, ch, "a");
+    // undo it, then send both in one tick, as two sockets would land
+    s.claims = [];
+    stand(s, "a", x + 1.5, y + 1.5);
+    stand(s, "b", x + 2.5, y + 2.5);
+    const ra = cmd(s, ch, "a", { k: "claim", x, y });
+    const rb = cmd(s, ch, "b", { k: "claim", x: x + 1, y: y + 1 });
+    expect(ra).toEqual({ ok: true });
+    expect(rb).toEqual({ ok: false, reason: "that's A's land" });
+    expect(s.claims).toHaveLength(1);
+  });
+
   it("are capped per player", () => {
     const { s, ch } = stocked();
     claimFor(s, ch, "a");
     claimFor(s, ch, "a");
     expect(() => claimFor(s, ch, "a")).toThrow();
+  });
+});
+
+describe("absence", () => {
+  it("a building site keeps rising after its builder closes the tab, and is theirs when they come back", () => {
+    const { s, ch } = stocked(["a", "b"]);
+    const [x, y] = freeTile(s, 3);
+    stand(s, "a", x, y);
+    ok(cmd(s, ch, "a", { k: "build", x, y, type: "plaza" }));
+    const site = s.buildings.find((b) => b.x === x && b.y === y)!;
+    expect(complete(site)).toBe(false);
+    leave(s, "a", ch);
+    econ(s, ch, 20);
+    expect(complete(site)).toBe(true);
+    expect(site.owner).toBe("a");
+    expect(join(s, "a", "tok-a", "A", ch)?.id).toBe("a");
   });
 });
 
@@ -959,25 +989,45 @@ describe("rushed and sustainable play", () => {
     expect(rush.s.buildings.some((b) => b.kit)).toBe(false);
   }, 60_000);
 
+  /** Whole campaigns at the short preset, two bots, run once and shared by the tests that read them. */
+  const campaigns = new Map<string, { s: RoomState; minutes: number }>();
+  function campaign(strat: Strategy): { s: RoomState; minutes: number } {
+    const done = campaigns.get(strat);
+    if (done) return done;
+    const s = createRoom("CAMPN", 7, "rapid");
+    const ch = newChanges();
+    join(s, "a", "ta", "A", ch);
+    join(s, "b", "tb", "B", ch);
+    let mem = { a: newMemory(), b: newMemory() };
+    let gen = s.gen;
+    while (s.phase.k !== "ended" && s.tick < 400_000) {
+      if (s.phase.k === "play" && s.tick % 8 === 0) for (const pid of ["a", "b"] as const) for (const c of decide(s, pid, strat, mem[pid])) applyCommand(s, pid, id(), s.gen, c, ch);
+      tick(s, ch);
+      ch.events.length = 0;
+      if (s.gen !== gen) {
+        gen = s.gen;
+        mem = { a: newMemory(), b: newMemory() };
+      }
+      expect(ledgerHolds(s)).toBe(true);
+      expect(bundleOk(s.inventory) && goodsOk(s)).toBe(true);
+    }
+    const r = { s, minutes: (s.tick * TICK_MS) / 60_000 };
+    campaigns.set(strat, r);
+    return r;
+  }
+
+  it("the short campaign takes two players between 8 and 22 minutes, rushed or careful", () => {
+    // the front page promises "about 10–20 minutes for two"; docs/DESIGN.md#pacing has the measurements
+    for (const strat of ["rush", "green"] as const) {
+      const { minutes } = campaign(strat);
+      expect(minutes, strat).toBeGreaterThan(8);
+      expect(minutes, strat).toBeLessThan(22);
+    }
+  }, 120_000);
+
   it("both strategies finish a whole campaign, the books balancing on every tick", () => {
     for (const strat of ["rush", "green"] as const) {
-      const s = createRoom("CAMPN", 7, "rapid");
-      const ch = newChanges();
-      join(s, "a", "ta", "A", ch);
-      join(s, "b", "tb", "B", ch);
-      let mem = { a: newMemory(), b: newMemory() };
-      let gen = s.gen;
-      while (s.phase.k !== "ended" && s.tick < 400_000) {
-        if (s.phase.k === "play" && s.tick % 8 === 0) for (const pid of ["a", "b"] as const) for (const c of decide(s, pid, strat, mem[pid])) applyCommand(s, pid, id(), s.gen, c, ch);
-        tick(s, ch);
-        ch.events.length = 0;
-        if (s.gen !== gen) {
-          gen = s.gen;
-          mem = { a: newMemory(), b: newMemory() };
-        }
-        expect(ledgerHolds(s)).toBe(true);
-        expect(bundleOk(s.inventory) && goodsOk(s)).toBe(true);
-      }
+      const { s } = campaign(strat);
       expect(s.phase).toEqual({ k: "ended", how: "consumed" });
       expect(s.history.map((h) => h.stage)).toEqual(STAGES.map((st) => st.id));
       // every world got a datacentre built through the chain

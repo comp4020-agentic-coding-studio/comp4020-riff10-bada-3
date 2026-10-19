@@ -35,6 +35,7 @@ import { lobbyTarget } from "../shared/lobby.ts";
 import { claimAt, footprint, route } from "../shared/layout.ts";
 import { complete, isIdle } from "../shared/world.ts";
 import { GameClient } from "./net.ts";
+import { rememberWorld } from "./worlds.ts";
 import { PLAYER_COLOURS, Renderer, type Tool, type View } from "./render.ts";
 import { Sound, type Mix } from "./audio.ts";
 
@@ -128,6 +129,18 @@ export default function Game({ room, name }: { room: string; name: string }): Re
     snd.ended = s.phase.k === "ended" && s.phase.how !== "restraint";
   });
   useEffect(() => soundRef.current.setMix(mix), [mix]);
+
+  // list this world on the front page, so a returning browser is one click from it
+  const stage = s?.stage;
+  const ended = s?.phase.k === "ended";
+  const pace = s?.pace;
+  useEffect(() => {
+    if (stage === undefined) return;
+    const note = (): void => rememberWorld(localStorage, { code: room, world: STAGES[stage].name, stage: stage + 1, last: Date.now(), ended, short: pace === "rapid" });
+    note();
+    const id = setInterval(note, 60_000);
+    return () => clearInterval(id);
+  }, [room, stage, ended, pace]);
 
   // keyboard
   useEffect(() => {
@@ -619,7 +632,7 @@ function RoomPanel({ s, client, host }: { s: Snapshot; client: GameClient; host:
         </p>
         <p className="small" role="status">
           <span className={`dot ${client.status}`} aria-hidden="true" /> {status}
-          {s.pace === "rapid" ? " · rapid preset" : ""}
+          {s.pace === "rapid" ? " · short campaign" : ""}
         </p>
         <ul className="roster" aria-label="Players">
           {Object.values(s.players)

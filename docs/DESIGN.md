@@ -161,7 +161,28 @@ Measured headless with two bots per room on Earth's seed 7 at normal pace (`scri
 
 "Used" is useful stock extracted, "wasted" destroyed by intensive harvesting and smoke; both include the 168 units the Green Lobby put back. A useful factory arrives in the first minute and a rushed datacentre around two minutes for two to four players, a little ahead of the brief's three-to-five-minute target, which a human group that doesn't know the recipes will spend. The trade-off holds at every size: the rush reaches compute first and wastes about a quarter of the world; the green route spends longer on setup, wastes almost nothing, makes four times the parts and keeps its datacentre running for longer (green's ten-minute snapshot at two players: 36 parts, 5 kits fitted). A lone rusher stalls on furnace fuel and gets no automation at all; a lone green player is automating at six minutes.
 
-Whole campaigns at the rapid preset, two bots: the rush finishes all five worlds in about 11 minutes, the green route in about 18, both building a factory and a datacentre on every world and an automated line on most (Mars, where domes, datacentres and pumps fight over ice, is the hardest). Late-stage endurance, the Solar System with the same Bottled Sun for both, two bots, rapid preset:
+### Whole campaigns, two bots
+
+The front page offers two campaigns. They have the same worlds and rules; the short one runs the economy five times faster and makes a hand harvest worth ten (`PACES` in `shared/content.ts`). The times it quotes come from these runs, two bots from arrival to the ending, minutes at which each world was spent (measured with the `scripts/brain.ts` decisions, the same loop the spec's campaign test runs):
+
+| Campaign | Strategy | Seed | Earth | Mars | Sun | Solar System | Universe (end) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| short | rush | 7 | 2.7 | 5.6 | 7.5 | 9.2 | 11.4 |
+| short | rush | 11 | 1.7 | 3.6 | 5.4 | 7.3 | 10.0 |
+| short | rush | 3 | 2.1 | 4.4 | 6.1 | 8.0 | 9.9 |
+| short | rush | 23 | 1.9 | 4.3 | 6.1 | 8.1 | 10.8 |
+| short | green | 7 | 4.2 | 7.9 | 11.3 | 14.9 | 18.1 |
+| short | green | 11 | 3.2 | 6.4 | 9.6 | 13.4 | 16.7 |
+| short | green | 3 | 3.5 | 7.2 | 10.2 | 13.9 | 17.0 |
+| short | green | 23 | 3.4 | 6.5 | 9.8 | 13.5 | 16.7 |
+| short | hand | 7 | 2.6 | 5.0 | 7.3 | 9.4 | 11.9 |
+| full | rush | 7 | 8.0 | 15.9 | 21.6 | 26.5 | 32.5 |
+| full | green | 7 | 17.6 | 33.2 | 46.5 | 58.6 | 74.4 |
+| full | hand | 7 | 14.1 | 29.6 | 43.3 | 56.5 | 70.7 |
+
+So the front page says "about 10–20 minutes for two" for the short campaign and "about 30–75 minutes for two" for the full one, and `spec/sim.test.ts` fails if the short campaign leaves 8–22 minutes. Bots know the recipes; a first-time pair will be slower on Earth and faster later, once the chain is familiar. The short campaign was kept as it was rather than slowed: at about two to four minutes a world, a pair still builds a factory and a datacentre on every one (asserted), watches Earth brown and sees the ending inside an afternoon sitting. Both strategies build a factory and a datacentre on every world and an automated line on most (Mars, where domes, datacentres and pumps fight over ice, is the hardest).
+
+Late-stage endurance, the Solar System with the same Bottled Sun for both, two bots, rapid preset:
 
 | Reserve | Strategy | Reserve empty at | Datacentre ran | Parts | Wasted |
 | --- | --- | --- | --- | --- | --- |

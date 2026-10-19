@@ -41,6 +41,12 @@ kbd { background: var(--paper-2); border: 1px solid var(--line); border-radius: 
 .card h1 { margin: 0 0 0.4rem; font-size: 2.6rem; letter-spacing: 0.02em; }
 .hero .lede { font-size: 1.05rem; line-height: 1.5; }
 .loading { padding: 2rem; text-align: center; }
+.presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.6rem; margin: 0.6rem 0 0.2rem; }
+.presets button { display: grid; gap: 0.1rem; text-align: left; padding: 0.5rem 0.8rem; font-weight: 700; }
+.presets button .small { font-weight: 400; }
+.hero h2 { font-size: 1.05rem; margin: 1rem 0 0.3rem; }
+.worlds { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.worlds a { overflow-wrap: anywhere; }
 
 .game { position: fixed; inset: 0; overflow: hidden; }
 .world { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -125,6 +131,21 @@ kbd { background: var(--paper-2); border: 1px solid var(--line); border-radius: 
   .top-right { max-height: 9rem; overflow: auto; }
   .corner-buttons .emotes { display: none; }
   .corner-buttons button { padding: 0.2rem 0.5rem; font-size: 0.78rem; }
+}
+/* a phone: each toolbar row scrolls sideways instead of stacking, so the HUD
+   keeps to the top and bottom edges and the player (centred) stays in view */
+@media (max-width: 600px) {
+  .panel { font-size: 0.78rem; padding: 0.35rem 0.5rem; }
+  .col-left { width: 52vw; }
+  .col-left .stage + .small, .top-right > p.small:last-child { display: none; }
+  .stocks li { grid-template-columns: 1fr 2.2rem 3.4rem; gap: 0.25rem; }
+  .top-right { max-width: 45vw; max-height: 7.5rem; }
+  .top-right .code { font-size: 0.9rem; }
+  .top-right .roster { display: flex; flex-wrap: wrap; gap: 0 0.5rem; }
+  .bottom { max-height: none; width: calc(100vw - 1.2rem); align-items: stretch; }
+  .bottom .row-buttons { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: thin; }
+  .bottom .row-buttons > * { flex: none; }
+  .corner-buttons { bottom: 9.6rem; }
 }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .card .title { font-size: 2rem; font-weight: 700; margin: 0; }
