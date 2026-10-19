@@ -17,6 +17,9 @@ What was checked, how, and what it showed. Targets and results are kept apart, a
 - two players taking the last unit: one succeeds, the world ends exactly once
 - a retried command id applies once
 - a command for a previous stage generation is refused
+- two players claiming overlapping ground in the same tick: the first wins, the second is told whose land it is
+- a building site keeps rising after its builder leaves, stays theirs, and they rejoin as themselves
+- the short campaign takes two bots between 8 and 22 minutes, rushed or careful (the front page says 10--20)
 - malformed, non-finite, fractional, out-of-bounds, unknown, out-of-range and unauthorised commands are refused; only the builder or host can demolish
 - no building on a deposit with stock left; a spent deposit can be built on
 - names are stripped of control characters and capped
@@ -58,9 +61,18 @@ The factory chain, claims, networks and the Green Lobby (crit 10):
 - **crash recovery**: the same after SIGKILL, once the 5 s save interval has passed (both now check the ledger's extracted count rather than one tile, since a lobbyist may replant that tile in between)
 - **the action log**: a private server's stdout names both players' joins with their ids and names, a harvest-mode change, a lobbyist's arrival, every line in the `room= stage= tick= actor= name= action=` shape, and never either player's token
 
-**`spec/invariants.test.ts`**, the course's: `/` answers and `/readme/` publishes this README with every heading.
+**`spec/server.test.ts`**, added for the final project:
 
-55 tests, all passing locally against a freshly built server.
+- two clients racing for one deposit over real sockets: each unit goes to exactly one, and both sessions agree on the tile and the books
+- a stalled connection (its socket paused, as a throttled phone would be) never delays the other player's acknowledgement, and catches up to the same world when it resumes
+
+**`spec/visit.test.ts`**, the marker's visit: the front page links `/readme/` and states both campaign lengths; `/readme/` links to the game; a returning browser's storage lists every world it holds a token for, newest first, finished ones included, even when the list itself is corrupt.
+
+**`spec/docs.test.ts`**, the three places agree: the README is 400--600 words, `PROCESS.md` 900--1100, every test the README cites as enforcement exists in the file it names, and `CLAUDE.md` names every enforced claim. Breaking a cited test name, or renaming a claim in `CLAUDE.md`, turns it red (checked).
+
+**`spec/invariants.test.ts`**, the course's: `/` answers and `/readme/` publishes the README with every heading.
+
+67 tests, all passing locally against a freshly built server.
 
 ## Multiplayer playthroughs
 
@@ -72,6 +84,8 @@ The factory chain, claims, networks and the Green Lobby (crit 10):
 - **Keyboard only**: walk, harvest with `E`, choose a building with `2`, place it with `Enter`. This caught a real bug (a stump refusing a building) and a crash path in the key handler.
 - **Dense rooms**: one room at the 8-player cap (seven bots and a browser) plus three more rooms of four bots each.
 - **Delay and jitter**: a TCP proxy adding 150 ± 100 ms each way, in order (a 430 ms round trip as measured by the in-game ping), with a browser and a bot playing through it beside an unlagged browser. Movement stayed smooth (own avatar is predicted), actions were confirmed a round trip later, nothing was applied twice or lost, and the stockpile stayed consistent across all three.
+
+**The marker's visit** (final project), two `agent-browser` profiles at 1440×900 and 390×844: Ada started a short campaign from the front page; Bo opened the copied invite link, typed a name and was in the same world, each roster showing both names within a second. The server was stopped (SIGTERM) and restarted under both: both tabs showed "reconnecting" and came back as themselves without a reload, the log recording two `action=rejoin` lines. Ada's front page then listed the world ("Earth, world 1 of 5 · short") and one click returned her to it as herself. A world joined before the list existed still appeared, from its token alone.
 
 **The factory chain in a real browser** (crit 10), `agent-browser` at 1920×1080 and 390×844 beside a rush bot on the rapid preset:
 
@@ -87,7 +101,7 @@ The factory chain, claims, networks and the Green Lobby (crit 10):
 
 Screenshots at 1920×1080, 1600×900, 1400×850, 1280×720 and 390×844 of: lush Earth, industrial Earth (smoke, browned rings around furnaces), spent Earth (12% living land), Mars with domes and a colony stalled on ice, the Sun bright and dimmed, the Solar System with relays and remnants, the Universe with its stars going out, a transition card and the ending. Findings fixed along the way: overlapping HUD panels at 1280×720, a sky that stayed bright after the Sun was spent, an Earth that never looked desolate (the water-table rule), toasts stacking, duplicate player names.
 
-At 390×844 the game renders and the HUD fits (secondary panels hide), but it's a desktop game: there are no touch controls.
+At 390×844, no page scrolls sideways (front page, `/readme/`, play screen: `scrollWidth` 390). The HUD keeps to the top and bottom edges: the stage and room panels share the top, each toolbar row scrolls sideways at the bottom, and the player stays visible in the middle. Tapping open ground walks, tapping a deposit in reach harvests, and every tool is a button. Laying lines takes two taps and is fiddly.
 
 **Accessibility**: `agent-browser a11y` (axe-core 4.12 in a real browser) reports no violations on the front page or the play screen with the HUD loaded. Every control is a native button or input with a text label; building status and stock levels are text, never colour alone; there's a reduced-motion setting defaulting to the OS preference; audio starts only on a click and has three volume controls.
 

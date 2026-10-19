@@ -1,88 +1,44 @@
 # Plenty
 
-A cosy multiplayer game about having enough, and never stopping.
+Friends share one finite world and play it down to nothing, or choose to stop. [Play it](https://comp4020-riff10-bada-3.fly.dev/).
 
-You and up to seven friends arrive on a little meadow island: a pond with a heron, a few groves, an old oak, a hill for picnics. You gather timber and metal ore by hand, build cottages, power them, run a factory that turns ore into wire and frames, stake out a plot, and earn a datacentre that teaches harvesters and conveyor belts to do the gathering for you. It works beautifully. A few people in straw hats with placards, the Green Lobby, wander about replanting what you take, for as long as their seed bank lasts. When the island is used up, the Plenty Cooperative has another world ready: Mars, then the Sun itself, then the whole Solar System, then the Universe. There is no sixth.
+## What good means here
 
-The game is built from a pod's brief, _Consume the Universe_: let players enjoy building the machine, then notice what the machine has consumed.
+Plenty is good if friends playing one afternoon together end up feeling what their convenience cost. Every convenience has a dependency. A datacentre needs parts, parts need ore, and its harvesters empty the land faster. Being careful gets more out of the same world. It doesn't make a new one.
+
+Co-presence is the point. More hands consume faster. The stockpile is shared: one player's rush spends everyone's island. The ending where you leave the rest alone needs everyone present to agree. The cost shows in the land (grass browns, groves become stumps, the pond shrinks), never in a lecture.
+
+## What we read
+
+Robin Sloan's family messaging app: "It is ruthlessly simple; we love it; no one else will ever use it" ([2020](https://www.robinsloan.com/notes/home-cooked-app/)). Clay Shirky calls this situated software, "designed for use by a specific social group, rather than for a generic set of 'users'" ([2004](https://gwern.net/doc/technology/2004-03-30-shirky-situatedsoftware.html)). Plenty is for one table of friends.
+
+It answers factory games. Factorio is "a game in which you build and maintain factories" ([factorio.com](https://www.factorio.com/)); Satisfactory promises "Nature is yours to harvest!" ([satisfactorygame.com](https://www.satisfactorygame.com/)). Frank Lantz's *Universal Paperclips* "gives you direct, first-hand experience of what it means to pursue an arbitrary goal with dogged determination" ([2017](https://www.pcgamesinsider.biz/interviews-and-opinion/66271/interview-paperclips-developer-frank-lantz/)). Plenty keeps that pleasure and puts your friends beside you.
+
+## What we left out
+
+No accounts: the browser keeps a token per world. No text chat, so nothing to moderate; emotes carry talk. No public room list: invites only. No leaderboards or combat: the island is shared, not contested. No offline progress: empty worlds pause ([ADR 0001](docs/adr/0001-empty-rooms-pause.md)).
+
+## Enforced and judged
+
+Enforced by `spec/`:
+
+- the world is finite: spec/sim.test.ts: "keeps initial = remaining + extracted + destroyed through a whole campaign, and reaches the ending"
+- care pays, but only within the same world: spec/sim.test.ts: "the rush reaches compute sooner and wastes more; the sustainable route gets more useful work from the same world"
+- the restraint ending needs everyone present: spec/sim.test.ts: "ends the campaign with stock left only when everyone here agrees, and keeps the books"
+- the server decides contention: spec/server.test.ts: "two clients racing for the same deposit at the same instant: each unit goes to exactly one of them"
+- you see each other act: spec/server.test.ts: "one player's harvest reaches another open session within a second, without a reload"
+- it survives a restart: spec/server.test.ts: "recovers a campaign after a graceful restart, under a new incarnation"
+- you can come back tomorrow: spec/visit.test.ts: "a returning browser finds every world it joined, newest first, finished ones included"
+- it fits an afternoon: spec/sim.test.ts: "the short campaign takes two players between 8 and 22 minutes, rushed or careful"
+
+Rules in [`CLAUDE.md`](CLAUDE.md): browsers never decide outcomes, user text stays text, every action is logged with who did it.
+
+Judged by people: whether the land's decline registers without words, and whether the ending lands. Bots and two-browser sessions checked the mechanics ([`docs/TESTING.md`](docs/TESTING.md)), not the feeling.
+
+## How it's built
+
+WebSockets, because traffic runs both ways many times a second: held-down walking up, each tick's changes down. Server-sent events would make every step a POST. One Node process on one machine owns every room, so commands apply one at a time and "first one wins" holds. The cost: deploys pause everyone briefly.
 
 ## How to play
 
-Start a world from the front page and send the invite link (or the five-letter room code) to friends. No account: your browser remembers who you are in each room.
-
-- **Walk** with WASD or the arrow keys, or tap open ground on a touch screen. Paths make it quicker. Zoom with the wheel or `+`/`-`.
-- **Harvest** by holding `E` (or `Space`) near a tree, rock or pond, or by clicking it. `M` switches between careful (takes 1, wastes nothing) and intensive (takes 2 and destroys 1 more, scarring the ground). Everything goes into the room's shared stockpile.
-- **Build** with `1`--`9`. A ghost shows the footprint, every shortage ("needs 6 wire (have 2)"), and why it can't go somewhere ("claim this ground first", "that's Ada's land"). Click to place it, or press `Enter` for the tile you're facing. Buildings with an efficiency kit can be built efficiently: more parts, slower, less damage, the kit built in.
-- **Load and collect** with `F` beside a machine: it loads a factory from the stockpile and collects what it made, empties a harvester's hopper or a pump's tank, and fills a datacentre's or dome's tank.
-- **Lay lines** with `L`: click where it starts, then where it ends. Cables carry power (a machine only has what its own grid makes), pipes carry coolant from a pump, belts carry items towards their arrows (start a belt on the side of another to split it), and paths are quicker to walk. `G` shows every network. `X` on a line takes up that tile.
-- **Claim** a 4×4 plot with `C` (3 timber, two each). A datacentre has to sit on your own claim. Nobody else can build or take anything down there, but anyone can still walk, harvest and connect.
-- **Help raise** a building site by pressing `E` beside it: several people building together finish faster.
-- `I` inspects a building (recipes, buffers, what it runs on, why it's idle, and its efficiency kit), `X` takes one down for half its cost back, `N` names a favourite place, `V` surveys every deposit left, `P` saves a photo, and `Shift`+`1`--`6` emotes.
-- `H` opens help in the game.
-
-## The chain
-
-Every world runs the same short chain, in its own words, and the Cooperative memo in the corner walks you through it:
-
-1. **Gather** timber and metal ore by hand.
-2. **House workers** in Cottages. They need no power to start with.
-3. **Power** them: a Furnace (lots of power, burns timber and nearby groves) or a Sun Garden (clean, slow, takes ground). Lay a cable from the generator to what it powers.
-4. **Build a Factory**, cable it in, and load it with `F`. It needs power and workers, never compute, and makes **wire** (3 ore → 2) and **frames** (4 ore + 3 timber → 1) until you have enough for a datacentre.
-5. **Claim** a plot and **build the Datacentre** on it: 6 wire, 2 frames, a little ore and timber.
-6. **Cool it**: a Pump beside the pond, piped to the datacentre (or fill its tank by hand).
-7. **Automate**: the datacentre's compute runs Harvesters. Belt their hoppers to a Store (into the stockpile) or straight into the factory.
-8. **Find the bottleneck**. More extraction runs into factory throughput, then power, coolant and belt capacity. Add cheap capacity, or make an **efficiency kit** (2 wire + 1 frame) and fit it: a factory's efficient recipes get more parts from the same ore, a datacentre drinks half the coolant, a harvester works carefully at full speed.
-
-Rushing (intensive harvesting, furnaces, standard builds, cheap pipe) gets you compute first and burns through the world faster. Building carefully takes more parts and setup and gets more useful work out of the same finite stock. Mix them, switch, retrofit: there's no class to pick. The stockpile panel tells you what your idle machines are waiting for and keeps a tally of parts made, water used and energy drawn.
-
-A world moves on when every deposit on it is gone, for everyone at once, whatever you've built. The survey arrow points at the nearest remaining deposit, so the last few never turn into a hunt.
-
-## The Green Lobby
-
-They're against the datacentre. A couple of them arrive at the start, one more for every running factory, two more for every datacentre. They walk to whatever you've harvested down and put a little back, a few units at a visit, and they'll stand by a datacentre site with a placard and slow its construction for a while. They come from a finite seed bank, shown in the HUD, and when it's empty they go home. You can always outpace them: a world ends when its deposits do. They're strongest on Earth, bring a little ice to Mars, and stay home after that.
-
-## The five worlds
-
-| World | What you consume | What's different |
-| --- | --- | --- |
-| Earth | timber, metal ore, fresh water | Furnaces are strong, but their smoke kills groves and browns the land. Sun Gardens are clean and slow. The Green Lobby is out in force. |
-| Mars | regolith, iron, buried ice | Nothing runs outside a dome's air, and domes, pumps and datacentres all drink the same buried ice. Sealed domes and pipes stretch it. |
-| The Sun | plasma, magnetics, shade | Collectors pour in power and heat; past the limit, scoops throttle until radiators shed it. Only plasma you actually extract is bottled for later: what an intensive scoop destroys is gone. The star dims as you take it. |
-| The Solar System | volatiles, asteroid metal, comet ice | No sunlight now. Cable machines to the Depot and they draw on the Bottled Sun you saved, which doesn't refill; the HUD shows how long it'll last at the current draw. Miners only run if relays link them to the Depot. |
-| The Universe | starlight, stellar cores, dark cold | Your spent worlds run as World Engines. The host can render one down for a burst of energy, forever. And if everyone here agrees, you can stop, and leave the rest alone. |
-
-Spent Earth and Mars float in the Solar System as grey remnants, and the Solar System sits in a corner of the Universe. Nothing you've finished comes back fresh.
-
-## What the game is arguing
-
-Every convenience has a dependency. A datacentre takes parts, and parts take ore; the datacentre gives you compute, which runs harvesters, which empty the land faster, which needs more power, which on Earth means furnaces, whose smoke burns the groves you were going to harvest anyway. Being careful gets more out of the same world; it doesn't make a new one. The game never stops you and never lectures you. It shows the cost in the land (grass browns, trees become stumps, the pond shrinks to mud, the birds thin out and the birdsong with them) and it keeps a short archive of every named place and what became of it. The ending reads that archive back to you.
-
-The design document, [`docs/DESIGN.md`](docs/DESIGN.md), covers the economy, pacing, stages and ending in detail.
-
-## How it works
-
-One Node process on Fly.io owns every room's simulation and speaks WebSocket; browsers render the world and send intentions (move, harvest, build, claim, lay a line). The server decides everything, and logs every action with who did it, so `flyctl logs` tells the story of a room. The browser app is Next.js, exported to static files that the same process serves, with the world drawn on a Canvas 2D in its own frame loop. Rooms persist as snapshots in SQLite on the Fly volume.
-
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): the stack, the protocol, authority, persistence, deployment and recovery
-- [`docs/DECISIONS.md`](docs/DECISIONS.md): the decision log, including the creative directions weighed at the start
-- [`docs/adr/0001-empty-rooms-pause.md`](docs/adr/0001-empty-rooms-pause.md): what a player finds when they come back
-- [`docs/TESTING.md`](docs/TESTING.md): what was tested, how, and what was measured
-- [`docs/ASSETS.md`](docs/ASSETS.md): where every picture and sound comes from, and how to replace them
-
-## Running it
-
-You need the versions in `mise.toml` (Node 24, pnpm 11).
-
-```sh
-pnpm install
-pnpm build          # Next.js shell -> out/
-pnpm start          # game server on :8080 (PORT and DATA_DIR override)
-```
-
-Then open <http://localhost:8080>. `pnpm check` typechecks and runs the spec against the running server (set `APP_URL` if it isn't on :8080). `node scripts/playbot.ts <ROOM> [url] [name] [rush|green|hand]` joins a room with a bot that plays the whole chain (rushed, sustainable, or by hand only), which is the quickest way to see later stages or fill a room.
-
-The rapid preset (a button on the front page) runs the same rules with the economy five times faster and a hand harvest worth ten. A solo campaign takes about ten minutes on it.
-
-## Known limits
-
-Desktop browsers with a keyboard first; on a phone you can tap to walk, harvest and use the toolbar, but laying lines is fiddly. One server process and one Fly machine host every room, so a deploy or crash pauses all rooms for a few seconds and can roll back up to five seconds of play. There's no text chat by design (emotes only), so moderation is limited to the host taking down buildings. The full list, and what to build next, is in [`docs/TESTING.md`](docs/TESTING.md).
+Start a short campaign, send a friend the invite link. Walk with WASD or tap, harvest with `E`, build with `1`--`9`, load machines with `F`. The full guide is [`docs/PLAYING.md`](docs/PLAYING.md); `H` opens help in the game.

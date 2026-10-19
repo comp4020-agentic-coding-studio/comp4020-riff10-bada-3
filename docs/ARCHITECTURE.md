@@ -41,7 +41,7 @@ Every command is validated server-side: session (the socket's player), membershi
 
 **Movement** is a continuous intent (a direction vector); the server integrates it at 10 Hz. There are no collisions, so the browser predicts its own avatar exactly and eases toward the server's answer, snapping only if more than 1.5 tiles off. Other avatars are interpolated two ticks behind the latest update.
 
-**Ticks.** The server steps every room at 10 Hz (checked every 50 ms). After a stall it catches up at most three ticks and drops the rest, so a paused process can't run the economy forward in a burst. The economy runs every 10 ticks (every 2 on the rapid preset).
+**Ticks.** The server steps every room at 10 Hz (checked every 50 ms). After a stall it catches up at most three ticks and drops the rest, so a paused process can't run the economy forward in a burst. The economy runs every 10 ticks (every 2 on the short campaign).
 
 ## Protocol
 
